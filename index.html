@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskTrack — Login</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="login">
+  <h1>TaskTrack</h1>
+  <form id="form">
+    <input id="u" type="text" placeholder="username" autocomplete="username" required>
+    <input id="p" type="password" placeholder="password" autocomplete="current-password" required>
+    <button type="submit">Sign in</button>
+  </form>
+  <div id="err" class="error"></div>
+</div>
+<script>
+async function login(u,p) {
+  const r = await fetch('api/auth.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+  const d = await r.json();
+  if (d.ok) location.href = 'app.html';
+  else document.getElementById('err').textContent = d.error || 'Login failed';
+}
+document.getElementById('form').onsubmit = e => { e.preventDefault(); login(document.getElementById('u').value,document.getElementById('p').value); };
+(async ()=>{
+  const r = await fetch('api/auth.php'); const d = await r.json(); if (d.ok) location.href='app.html';
+})().catch(()=>{});
+</script>
+</body>
+</html>

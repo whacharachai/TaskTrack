@@ -1,0 +1,6 @@
+// TaskTrack — no build step, no dependencies. Only local state.
+data/*.db
+data/*.db-wal
+data/*.db-shm
+uploads/*
+!uploads/.gitkeep
