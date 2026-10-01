@@ -14,7 +14,7 @@ if ($m === 'POST' || $m === 'PUT') {
     $id = (int)($b['id'] ?? ($_GET['id'] ?? 0));
     $name = trim((string)($b['username'] ?? ''));
     $pass = (string)($b['password'] ?? '');
-    if (isset($b['role']) && !in_array($b['role'], ['admin', 'user'], true)) fail('role must be admin or user');
+    if (isset($b['role']) && !in_array($b['role'], ['admin', 'worker', 'user'], true)) fail('role must be admin, worker or user');
     if ($id) {
         $st = $p->prepare('SELECT * FROM users WHERE id = ?');
         $st->execute([$id]);
@@ -52,6 +52,7 @@ if ($m === 'DELETE') {
     if ($st->fetch()['role'] === 'admin' && (int)$p->query("SELECT COUNT(*) FROM users WHERE role='admin'")->fetchColumn() < 2)
         fail('Cannot remove the last admin');
     $p->exec('DELETE FROM task_access WHERE user_id = ' . $id);
+    $p->exec('DELETE FROM project_access WHERE user_id = ' . $id);
     $p->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
     json_out(['ok' => true]);
 }

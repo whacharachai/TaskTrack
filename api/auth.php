@@ -34,10 +34,15 @@ if (PHP_SAPI === 'cli') {
     $u = $argv[1] ?? null;
     $p = $argv[2] ?? null;
     $r = $argv[3] ?? 'admin';
-    if (!$u || !$p) exit("usage: php api/auth.php <username> <password> [admin|user]\n");
-    if (!in_array($r, ['admin', 'user'], true)) exit("role must be admin or user\n");
-    db()->prepare('INSERT OR REPLACE INTO users (username, password_hash, role) VALUES (?,?,?)')
-        ->execute([$u, password_hash($p, PASSWORD_DEFAULT), $r]);
+    if (!$u || !$p) exit("usage: php api/auth.php <username> <password> [admin|worker|user]\n");
+    if (!in_array($r, ['admin', 'worker', 'user'], true)) exit("role must be admin, worker or user\n");
+    // update-in-place: INSERT OR REPLACE would delete the row and break its project_access links
+    $pdo = db();
+    $st = $pdo->prepare('SELECT id FROM users WHERE username = ?');
+    $st->execute([$u]);
+    $id = $st->fetchColumn();
+    if ($id) $pdo->prepare('UPDATE users SET password_hash = ?, role = ? WHERE id = ?')->execute([password_hash($p, PASSWORD_DEFAULT), $r, $id]);
+    else $pdo->prepare('INSERT INTO users (username, password_hash, role) VALUES (?,?,?)')->execute([$u, password_hash($p, PASSWORD_DEFAULT), $r]);
     echo "user '$u' ($r) ready\n";
     exit;
 }
