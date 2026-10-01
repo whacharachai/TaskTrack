@@ -4,16 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TaskTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <header>
   <h1>TaskTrack</h1>
+  <select id="project-select" title="Project"></select>
   <nav id="tabs">
     <button data-view="tasks" class="on">Tasks</button>
+    <button data-view="chat">Chat</button>
     <button data-view="timeline">Timeline</button>
     <button data-view="calendar">Calendar</button>
     <button data-view="report">Report</button>
+    <button data-view="projects" class="admin-only">Projects</button>
     <button data-view="users" class="admin-only">Users</button>
   </nav>
   <span id="who"></span>
@@ -23,7 +29,7 @@
 <main>
   <!-- TASKS -->
   <section id="view-tasks">
-    <form id="task-form" class="card admin-only">
+    <form id="task-form" class="card write-only">
       <h2 id="task-form-title">New task</h2>
       <input type="hidden" name="id">
       <div class="grid">
@@ -37,15 +43,9 @@
       </div>
       <label>Remark<textarea name="remark" rows="2"></textarea></label>
       <div class="row">
-        <span>Visible to roles:</span>
-        <label class="inline"><input type="checkbox" name="roles" value="admin"> admin</label>
-        <label class="inline"><input type="checkbox" name="roles" value="user" checked> user</label>
-      </div>
-      <label>Also assign users<select name="users" id="user-select" multiple size="4"></select></label>
-      <div class="row">
         <button type="submit">Save task</button>
         <button type="button" id="task-reset" class="link">clear</button>
-        <span id="task-msg" class="error"></span>
+        <span class="hint">who can see this task comes from the project</span>
       </div>
     </form>
 
@@ -54,20 +54,33 @@
     <div id="task-detail" class="card hidden">
       <button id="detail-close" class="link">close</button>
       <div id="detail-body"></div>
-      <form id="progress-form" class="row">
+      <form id="progress-form" class="row write-only">
         <input type="hidden" name="task_id">
-        <label>Done amount<input name="done_amount" type="number" step="0.01" min="0" required></label>
+        <label>Done on this day<input name="done_amount" type="number" step="0.01" min="0" required></label>
         <label>Date<input name="done_date" type="date" required></label>
         <label class="grow">Remark<input name="remark"></label>
         <button type="submit">Add progress</button>
       </form>
-      <form id="file-form" class="row">
-        <input type="hidden" name="task_id">
-        <input type="file" name="files[]" multiple>
-        <button type="submit">Attach</button>
-      </form>
+      <label class="hint write-only">Attach documents (up to 100 MB each)<input type="file" id="task-files" multiple></label>
+      <div id="task-upload" class="hint"></div>
       <div id="detail-files"></div>
     </div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="view-chat" class="hidden">
+    <h2>Chat room</h2>
+    <button id="chat-older" class="link hidden">load older messages</button>
+    <div id="chat-list" class="chat-list"></div>
+    <form id="chat-form" class="card">
+      <textarea name="body" rows="3" placeholder="Write a message…"></textarea>
+      <label class="hint">Attach files or photos (up to 100 MB each)<input type="file" id="chat-files" multiple></label>
+      <div id="chat-upload" class="hint"></div>
+      <div class="row">
+        <button type="submit">Send</button>
+        <span id="chat-msg" class="error"></span>
+      </div>
+    </form>
   </section>
 
   <!-- TIMELINE -->
@@ -97,13 +110,36 @@
     <div id="bars"></div>
   </section>
 
+  <!-- PROJECTS -->
+  <section id="view-projects" class="hidden">
+    <h2>Projects</h2>
+    <form id="project-form" class="card">
+      <h3 id="project-form-title">New project</h3>
+      <input type="hidden" name="id">
+      <div class="grid">
+        <label>Name<input name="name" required></label>
+        <label>Status<select name="status"><option value="active">active</option><option value="archived">archived</option></select></label>
+      </div>
+      <label>Remark<textarea name="remark" rows="2"></textarea></label>
+      <label>Visible to these users</label>
+      <div id="project-user-list" class="check-list"></div>
+      <p class="hint">Admins always see every project. Pick the people who should see this one.</p>
+      <div class="row">
+        <button type="submit">Save project</button>
+        <button type="button" id="project-reset" class="link">clear</button>
+        <span id="project-msg" class="error"></span>
+      </div>
+    </form>
+    <div id="project-list"></div>
+  </section>
+
   <!-- USERS -->
   <section id="view-users" class="hidden">
     <h2>Users</h2>
     <form id="user-form" class="card row">
       <input name="username" placeholder="username" required>
       <input name="password" type="password" placeholder="password">
-      <select name="role"><option value="user">user</option><option value="admin">admin</option></select>
+      <select name="role"><option value="user">user</option><option value="worker">worker</option><option value="admin">admin</option></select>
       <button type="submit">Add</button>
       <span id="user-msg" class="error"></span>
     </form>

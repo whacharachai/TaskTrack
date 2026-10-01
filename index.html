@@ -4,10 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TaskTrack — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div class="login">
+<div class="login hidden" id="box">
   <h1>TaskTrack</h1>
   <form id="form">
     <input id="u" type="text" placeholder="username" autocomplete="username" required>
@@ -21,12 +24,15 @@ async function login(u,p) {
   const r = await fetch('api/auth.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
   const d = await r.json();
   if (d.ok) location.href = 'app.html';
-  else document.getElementById('err').textContent = d.error || 'Login failed';
+  else { document.getElementById('err').textContent = d.error || 'Login failed'; document.getElementById('box').classList.remove('hidden'); }
 }
 document.getElementById('form').onsubmit = e => { e.preventDefault(); login(document.getElementById('u').value,document.getElementById('p').value); };
+// already logged in? go straight to the app instead of flashing this form
 (async ()=>{
-  const r = await fetch('api/auth.php'); const d = await r.json(); if (d.ok) location.href='app.html';
-})().catch(()=>{});
+  const r = await fetch('api/auth.php'); const d = await r.json();
+  if (d.ok) location.href='app.html';
+  else document.getElementById('box').classList.remove('hidden');
+})().catch(()=>document.getElementById('box').classList.remove('hidden'));
 </script>
 </body>
 </html>

@@ -18,21 +18,21 @@ $tasks = [
     4 => ['id' => 4, 'parent_id' => 3, 'total_amount' => 20],
     5 => ['id' => 5, 'parent_id' => null, 'total_amount' => 10],
 ];
-$latest = [2 => 30.0, 3 => 10.0, 4 => 20.0, 5 => 5.0];
+$own = [2 => 30.0, 3 => 10.0, 4 => 20.0, 5 => 5.0];
 
-check('A = own 0 + B 30 + C(10+20) = 60', rollup(1, $tasks, $latest)['done_amount'], 60.0);
-check('A percent 60', rollup(1, $tasks, $latest)['percent'], 60.0);
-check('B percent 75', rollup(2, $tasks, $latest)['percent'], 75.0);
-check('C rolls up its own child D', rollup(3, $tasks, $latest)['done_amount'], 30.0);
-check('E standalone percent 50', rollup(5, $tasks, $latest)['percent'], 50.0);
+check('A = own 0 + B 30 + C(10+20) = 60', rollup(1, $tasks, $own)['done_amount'], 60.0);
+check('A percent 60', rollup(1, $tasks, $own)['percent'], 60.0);
+check('B percent 75', rollup(2, $tasks, $own)['percent'], 75.0);
+check('C rolls up its own child D', rollup(3, $tasks, $own)['done_amount'], 30.0);
+check('E standalone percent 50', rollup(5, $tasks, $own)['percent'], 50.0);
 
 // over-report caps at 100 instead of showing 140%
 $tasks[5]['total_amount'] = 4;
-check('percent capped at 100', rollup(5, $tasks, $latest)['percent'], 100.0);
+check('percent capped at 100', rollup(5, $tasks, $own)['percent'], 100.0);
 
 // zero total must not divide by zero
 $tasks[6] = ['id' => 6, 'parent_id' => null, 'total_amount' => 0];
-check('zero total percent 0', rollup(6, $tasks, $latest)['percent'], 0.0);
+check('zero total percent 0', rollup(6, $tasks, $own)['percent'], 0.0);
 
 // a cycle (should not hang, treated as done)
 $tasks[7] = ['id' => 7, 'parent_id' => 8, 'total_amount' => 10];
