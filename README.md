@@ -24,7 +24,7 @@ A plain user gets no write buttons in the UI and the API answers 403 for the sam
 
 ## Projects
 
-Everything lives in a project: tasks, chat, files, timeline, calendar, report. An admin creates projects under the **Projects** tab and picks **which named users can see each one** — visibility is per user, not per role, and admins always see everything.
+Everything lives in a project: tasks, chat, files, timeline, calendar. An admin creates projects under the **Projects** tab and picks **which named users can see each one** — visibility is per user, not per role, and admins always see everything.
 
 Tasks inherit the project's list, so there is no per-task access list; a task always belongs to exactly one project, and a sub-task must belong to the same project as its parent. On first start after the upgrade, existing role grants are converted into named user assignments once and the `projects.roles` column is dropped.
 
@@ -64,14 +64,13 @@ Without `client_max_body_size` the 1 MB default rejects the second chunk of ever
 
 - **admin** — everything, including the Projects and Users tabs.
 - **worker** — creates and edits tasks, adds/edits/deletes daily progress amounts, chats and attaches files. Cannot touch projects, users, or delete tasks.
-- **user** — read-only: lists, timeline, calendar, report, chat reading.
+- **user** — read-only: lists, timeline, calendar, chat reading.
 
 ## Views
 
 - **Tasks** — list with cumulative progress bars; open a task to report progress, edit a day's amount, and see its files.
 - **Timeline** — bars per task across its date range, sub-tasks indented under the parent.
-- **Calendar** — month grid of progress entries; click a day to report for that date, click an entry to open its task.
-- **Report** — table + hand-drawn SVG chart (one line per task, running total of the daily entries over time) + per-task bars.
+- **Calendar** — month grid, Sunday first. Each task contributes a `Task name start` row on its start date and a `Task name end` row on its end date, alongside the progress entries logged that day. Click any row to open the task.
 - Progress entries are the amount done **on that day**, not a running total; a task's done amount is the sum of all its entries.
 
 ## Checks

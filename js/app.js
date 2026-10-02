@@ -72,7 +72,6 @@ function show(view) {
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
   if (view === 'calendar') guard(loadCalendar)();
   if (view === 'timeline') renderTimeline();
-  if (view === 'report') guard(renderReport)();
   if (view === 'chat' && PROJECT) guard(loadChat)();
   if (view === 'projects') renderProjects();
   if (view === 'users') renderUsers();
@@ -153,7 +152,7 @@ async function reload() {
   // a plain user never sees the form, and it also needs a project before it can save anything
   $('#task-form').classList.toggle('hidden', !PROJECT || !ME.can_write);
   fillParentSelect();
-  renderTasks(); renderTimeline(); guard(renderReport)();
+  renderTasks(); renderTimeline();
 }
 
 /* ================= tasks ================= */
@@ -289,7 +288,6 @@ async function editProgress(gid) {
   DETAIL = await api('tasks.php?id=' + DETAIL.id);
   await reload(); renderDetail();
   if (!$('#view-calendar').classList.contains('hidden')) guard(loadCalendar)();
-  if (!$('#view-report').classList.contains('hidden')) guard(renderReport)();
 }
 
 async function saveProgress(e) {
@@ -300,7 +298,6 @@ async function saveProgress(e) {
   DETAIL = await api('tasks.php?id=' + f.elements.task_id.value);
   await reload(); renderDetail();
   if (!$('#view-calendar').classList.contains('hidden')) guard(loadCalendar)();
-  if (!$('#view-report').classList.contains('hidden')) guard(renderReport)();
 }
 
 // attaching to a task is an immediate file input, not part of the task form submit
@@ -434,19 +431,27 @@ async function loadCalendar() {
   details.forEach((d, i) => (d ? d.progress : []).forEach(g => ENTRIES.push({ ...g, task: TASKS[i] })));
   const y = CAL.getFullYear(), m = CAL.getMonth();
   $('#cal-title').textContent = CAL.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  const startDow = (new Date(y, m, 1).getDay() + 6) % 7;
+  const startDow = new Date(y, m, 1).getDay(); // week starts Sunday
   const days = new Date(y, m + 1, 0).getDate();
+  // "01/10" or "01/10/2027" when the year differs from the one being shown
   const byDay = {};
-  ENTRIES.forEach(e => (byDay[e.done_date] = byDay[e.done_date] || []).push(e));
+  ENTRIES.forEach(e => (byDay[e.done_date] = byDay[e.done_date] || []).push({ entry: e }));
+  // start/end markers come from the task itself, not from progress, so a task that has never
+  // been reported on still shows up on the days it was meant to run
+  TASKS.forEach(t => {
+    if (t.start_date) (byDay[t.start_date] = byDay[t.start_date] || []).push({ mark: 'start', task: t });
+    if (t.end_date) (byDay[t.end_date] = byDay[t.end_date] || []).push({ mark: 'end', task: t });
+  });
   let cells = '';
   for (let i = 0; i < startDow; i++) cells += '<div class="cal-cell pad"></div>';
   for (let d = 1; d <= days; d++) {
     const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const list = byDay[ds] || [];
-    cells += `<div class="cal-cell${ds === today() ? ' now' : ''}" data-date="${ds}"><b>${d}</b>${list.map(e =>
-      `<div class="cal-ev" data-tid="${e.task_id}" title="${esc(e.task.name)}: ${n2(e.done_amount)} ${esc(e.task.unit)} — ${esc(e.remark || '')}">${esc(e.task.name.slice(0, 14))} ${n2(e.done_amount)}</div>`).join('')}</div>`;
+    cells += `<div class="cal-cell${ds === today() ? ' now' : ''}" data-date="${ds}"><b>${d}</b>${list.map(x => x.mark
+      ? `<div class="cal-ev cal-mark cal-${x.mark}" data-tid="${x.task.id}" title="${esc(x.task.name)} ${x.mark === 'start' ? 'starts' : 'ends'} ${esc(x.mark === 'start' ? x.task.start_date : x.task.end_date)}">${esc(x.task.name)} ${x.mark}</div>`
+      : `<div class="cal-ev" data-tid="${x.entry.task_id}" title="${esc(x.entry.task.name)}: ${n2(x.entry.done_amount)} ${esc(x.entry.task.unit)} — ${esc(x.entry.remark || '')}">${esc(x.entry.task.name.slice(0, 14))} ${n2(x.entry.done_amount)}</div>`).join('')}</div>`;
   }
-  $('#calendar').innerHTML = `<div class="cal-grid">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="cal-h">${d}</div>`).join('')}${cells}</div>`;
+  $('#calendar').innerHTML = `<div class="cal-grid">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="cal-h">${d}</div>`).join('')}${cells}</div>`;
   $('#calendar').onclick = guard(async e => {
     const ev = e.target.closest('.cal-ev');
     if (ev) return void (await openTask(+ev.dataset.tid));
@@ -457,44 +462,6 @@ async function loadCalendar() {
     $('#progress-form').scrollIntoView({ behavior: 'smooth' });
     $('#progress-form').elements.done_amount.focus();
   });
-}
-
-/* ================= report ================= */
-async function renderReport() {
-  const details = await Promise.all(TASKS.map(t => api('tasks.php?id=' + t.id).catch(() => null)));
-  $('#report-table').innerHTML = `<table><thead><tr><th>Task</th><th>Period</th><th>Total</th><th>Done</th><th>%</th><th>Entries</th><th>Files</th></tr></thead><tbody>
-    ${ordered().map(t => `<tr><td style="padding-left:${8 + depth(t) * 14}px">${esc(t.name)}</td><td>${t.start_date || '—'} → ${t.end_date || '—'}</td>
-    <td class="num">${n2(t.total_amount)} ${esc(t.unit)}</td><td class="num">${n2(t.done_amount)}</td><td class="num">${t.percent}%</td>
-    <td class="num">${t.progress_count}</td><td class="num">${t.file_count}</td></tr>`).join('')}</tbody></table>`;
-  lineChart(details.filter(Boolean));
-  $('#bars').innerHTML = ordered().map(t => `<div class="bar-row"><span>${esc(t.name)}</span><div class="bar"><i style="width:${t.percent}%"></i></div><b>${t.percent}%</b></div>`).join('');
-}
-
-// hand-rolled SVG line chart: one line per task, x = progress date, y = cumulative % of that task
-function lineChart(details) {
-  const W = 900, H = 320, P = 45, w = W - P * 2, h = H - P * 2;
-  const series = details.map(d => {
-    // entries are per-day amounts, so the line is their running total
-    let run = 0;
-    const pts = d.progress.map(g => {
-      run += +g.done_amount || 0;
-      return { t: new Date(g.done_date + 'T00:00:00').getTime(), p: d.total_amount > 0 ? Math.min(100, run / d.total_amount * 100) : 0 };
-    });
-    return { name: d.name, pts };
-  }).filter(s => s.pts.length);
-  if (!series.length) { $('#chart').innerHTML = '<p class="hint">no progress reported yet</p>'; return; }
-  const t0 = Math.min(...series.flatMap(s => s.pts.map(p => p.t))), t1 = Math.max(...series.flatMap(s => s.pts.map(p => p.t)));
-  const span = Math.max(86400000, t1 - t0);
-  const X = t => P + (t - t0) / span * w, Y = p => P + h - p / 100 * h;
-  const colors = ['#2f6fd0', '#d0532f', '#2f9d55', '#8b3fd0', '#c9a227', '#d02f7a', '#3aa8c1', '#666'];
-  let grid = '';
-  for (let v = 0; v <= 100; v += 25) grid += `<line x1="${P}" y1="${Y(v)}" x2="${P + w}" y2="${Y(v)}" stroke="#c8d0da"/><text x="${P - 8}" y="${Y(v) + 4}" text-anchor="end" class="ax">${v}%</text>`;
-  const nowX = Date.now() >= t0 && Date.now() <= t0 + span ? `<line x1="${X(Date.now())}" y1="${P}" x2="${X(Date.now())}" y2="${P + h}" stroke="#c0392b" stroke-dasharray="4 3"/><text x="${X(Date.now())}" y="${P - 6}" class="ax" text-anchor="middle">today</text>` : '';
-  const lines = series.map((s, i) => `<polyline fill="none" stroke="${colors[i % colors.length]}" stroke-width="2" points="${s.pts.map(p => `${X(p.t)},${Y(p.p)}`).join(' ')}"/>${s.pts.map(p => `<circle cx="${X(p.t)}" cy="${Y(p.p)}" r="3" fill="${colors[i % colors.length]}"><title>${esc(s.name)} ${new Date(p.t).toISOString().slice(0, 10)}: ${p.p.toFixed(1)}%</title></circle>`).join('')}`).join('');
-  $('#chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="chart">${grid}${nowX}${lines}
-    <text x="${P}" y="${P + h + 22}" class="ax">${new Date(t0).toISOString().slice(0, 10)}</text>
-    <text x="${P + w}" y="${P + h + 22}" class="ax" text-anchor="end">${new Date(t0 + span).toISOString().slice(0, 10)}</text></svg>
-    <div class="legend">${series.map((s, i) => `<span><i style="background:${colors[i % colors.length]}"></i>${esc(s.name)}</span>`).join('')}</div>`;
 }
 
 /* ================= projects ================= */

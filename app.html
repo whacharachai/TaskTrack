@@ -18,8 +18,7 @@
     <button data-view="chat">Chat</button>
     <button data-view="timeline">Timeline</button>
     <button data-view="calendar">Calendar</button>
-    <button data-view="report">Report</button>
-    <button data-view="projects" class="admin-only">Projects</button>
+        <button data-view="projects" class="admin-only">Projects</button>
     <button data-view="users" class="admin-only">Users</button>
   </nav>
   <span id="who"></span>
@@ -95,20 +94,10 @@
       <button id="cal-prev">&larr;</button>
       <h2 id="cal-title"></h2>
       <button id="cal-next">&rarr;</button>
-      <span class="hint">click a day to report progress for that date</span>
     </div>
     <div id="calendar"></div>
   </section>
 
-  <!-- REPORT -->
-  <section id="view-report" class="hidden">
-    <h2>Progress report</h2>
-    <div id="report-table"></div>
-    <h3>Completed % over time</h3>
-    <div id="chart"></div>
-    <h3>Per-task completion</h3>
-    <div id="bars"></div>
-  </section>
 
   <!-- PROJECTS -->
   <section id="view-projects" class="hidden">

@@ -7,6 +7,7 @@
   --accent: #4a7fd4;
   --green: #2f9d55;
   --green-lt: #4fc27c;
+  --red: #c0392b;
   --raised: -6px -6px 12px var(--light), 6px 6px 12px var(--dark);
   --raised-sm: -3px -3px 6px var(--light), 3px 3px 6px var(--dark);
   --inset: inset -3px -3px 6px var(--light), inset 3px 3px 6px var(--dark);
@@ -116,10 +117,6 @@ tbody tr td:last-child { border-radius: 0 10px 10px 0; }
 /* progress indicators: green means done */
 .bar { background: var(--bg); border-radius: 7px; height: 11px; box-shadow: var(--inset-sm); overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: 7px; background: linear-gradient(90deg, var(--accent), var(--green-lt)); }
-.bar-row { display: flex; gap: 12px; align-items: center; margin-bottom: 9px; }
-.bar-row span { width: 220px; font-size: 14px; font-weight: 300; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bar-row .bar { flex: 1; }
-.bar-row b { width: 58px; text-align: right; font-size: 13px; }
 
 /* ---------- timeline ---------- */
 .tl-row {
@@ -151,13 +148,11 @@ tbody tr td:last-child { border-radius: 0 10px 10px 0; }
   background: var(--bg); border-radius: 8px; padding: 2px 6px; margin-top: 4px; font-size: 12px;
   box-shadow: var(--raised-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-
-/* ---------- chart ---------- */
-.chart { width: 100%; height: auto; border-radius: 16px; box-shadow: var(--raised); background: var(--bg); }
-.chart .ax { font-size: 11px; fill: var(--muted); font-family: 'Kanit', sans-serif; }
-.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-top: 14px; }
-.legend i { display: inline-block; width: 11px; height: 11px; border-radius: 4px; margin-right: 6px; box-shadow: var(--raised-sm); }
-
+/* the task's own start / end rows: bold, and the whole line carries the colour */
+.cal-mark { font-weight: 600; }
+.cal-mark.cal-start { color: var(--green); }
+.cal-mark.cal-end { color: var(--red); }
+/* start / end markers, coloured by which end of the task they are */
 /* ---------- chat ---------- */
 .pill { font-size: 13px; color: var(--accent); background: var(--bg); padding: 5px 14px; border-radius: 12px; box-shadow: var(--raised-sm); }
 #project-select { width: auto; min-width: 190px; margin: 0; }
@@ -185,7 +180,7 @@ tbody tr td:last-child { border-radius: 0 10px 10px 0; }
 .login .error { margin-top: 14px; text-align: center; }
 
 @media (max-width: 700px) {
-  .tl-name, .bar-row span { width: 120px; min-width: 120px; }
+  .tl-name { width: 120px; min-width: 120px; }
   main { padding: 14px; }
   .cal-grid { gap: 6px; }
 }
