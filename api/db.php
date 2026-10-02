@@ -7,6 +7,22 @@ const UPLOAD_MAX = 100 * 1024 * 1024;   // 100 MB per file
 const THUMB_MAX = 320;                  // longest edge of a generated photo thumbnail
 const OK_EXT = 'pdf,doc,docx,xls,xlsx,ppt,pptx,txt,csv,rtf,odt,png,jpg,jpeg,gif,webp,zip,rar,7z,dwg,dxf,kml,kmz,mp4,mov,heic';
 
+// An uncaught exception or fatal would answer with an HTML error page, which the fetch() in
+// js/app.js cannot parse. Answer with JSON and put the full detail in the PHP error log.
+function fatal_json(int $status, string $message): void {
+    error_log('TaskTrack: ' . $message);
+    if (!headers_sent()) { http_response_code($status); header('Content-Type: application/json'); }
+    echo json_encode(['error' => $message]);
+    exit;
+}
+set_exception_handler(function (Throwable $e) { fatal_json(500, get_class($e) . ': ' . $e->getMessage()); });
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if (!$e || !in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) return;
+    if (headers_sent()) return;
+    fatal_json(500, 'PHP ' . $e['message'] . ' (' . basename($e['file']) . ':' . $e['line'] . ')');
+});
+
 function db(): PDO {
     static $pdo = null;
     if ($pdo === null) {
@@ -16,7 +32,8 @@ function db(): PDO {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $pdo->exec('PRAGMA foreign_keys = ON');
-        $pdo->exec('PRAGMA journal_mode = WAL');
+        // WAL fails on some host filesystems; it is a speed choice, not a requirement
+        try { $pdo->exec('PRAGMA journal_mode = WAL'); } catch (Throwable $e) { error_log('WAL off: ' . $e->getMessage()); }
         migrate($pdo);
     }
     return $pdo;
@@ -60,7 +77,12 @@ function migrate(PDO $p): void {
         foreach ($p->query("SELECT id, roles FROM projects WHERE roles IS NOT NULL AND roles <> ''") as $pr)
             foreach (array_filter(explode(',', (string)$pr['roles'])) as $role)
                 foreach ($p->query('SELECT id FROM users WHERE role = ' . $p->quote($role)) as $u) $grant->execute([(int)$pr['id'], (int)$u['id']]);
-        $p->exec('ALTER TABLE projects DROP COLUMN roles');
+        // DROP COLUMN needs SQLite 3.35+. On older hosts leave the column in place: no code
+        // reads it any more, so it is harmless, whereas the statement itself would be fatal.
+        if (version_compare($p->query('SELECT sqlite_version()')->fetchColumn(), '3.35', '>='))
+            $p->exec('ALTER TABLE projects DROP COLUMN roles');
+        else
+            error_log('SQLite too old to drop projects.roles; column left unused');
     }
     $p->exec('CREATE TABLE IF NOT EXISTS progress (
         id INTEGER PRIMARY KEY, task_id INTEGER NOT NULL REFERENCES tasks(id),
@@ -206,12 +228,11 @@ function thumb_path(string $stored): string { return UPLOAD_DIR . 'thumb_' . $st
 // Longest-edge thumbnail; returns the stored thumb filename or null when the type is not an image.
 function make_thumb(string $path, string $mime): ?string {
     if (!function_exists('imagecreatetruecolor')) return null;
-    $src = match ($mime) {
-        'image/jpeg' => @imagecreatefromjpeg($path),
-        'image/png' => @imagecreatefrompng($path),
-        'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : null,
-        default => null,
-    };
+    // manual dispatch instead of match(): this file has to parse on PHP 7.x hosts too
+    if ($mime === 'image/jpeg') $src = @imagecreatefromjpeg($path);
+    elseif ($mime === 'image/png') $src = @imagecreatefrompng($path);
+    elseif ($mime === 'image/webp' && function_exists('imagecreatefromwebp')) $src = @imagecreatefromwebp($path);
+    else $src = null;
     if (!$src) return null;
     $w = imagesx($src);
     $h = imagesy($src);

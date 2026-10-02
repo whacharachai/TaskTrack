@@ -32,7 +32,9 @@ if ($m === 'GET') {
         json_out(project_out($p, $r));
     }
     $rows = $p->query('SELECT * FROM projects p WHERE ' . project_visible_sql('p') . ' ORDER BY p.status, p.name')->fetchAll();
-    json_out(array_map(fn($r) => project_out($p, $r), $rows));
+    $out = [];
+    foreach ($rows as $r) $out[] = project_out($p, $r);
+    json_out($out);
 }
 
 if ($m === 'POST' || $m === 'PUT') {
