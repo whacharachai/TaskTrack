@@ -21,8 +21,16 @@ async function api(path, opt = {}) {
   const r = await fetch('api/' + path, o);
   if (r.status === 401) { location.href = 'index.html'; throw new Error('expired'); }
   const ct = r.headers.get('content-type') || '';
-  if (!ct.includes('json')) { if (!r.ok) throw new Error(r.statusText); return null; }
-  const d = await r.json();
+  // a PHP fatal answers with an HTML page or nothing at all, so show that text instead of
+  // letting response.json() die with "Unexpected end of JSON input"
+  if (!ct.includes('json')) {
+    const raw = (await r.text().catch(() => '')).trim();
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}${raw ? ' — ' + raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) : ''}`);
+    return null;
+  }
+  const text = await r.text();
+  let d;
+  try { d = JSON.parse(text); } catch { throw new Error(`${r.status} ${r.statusText} — bad JSON from ${path}: ${text.slice(0, 200)}`); }
   if (!r.ok || d.error) throw new Error(d.error || 'request failed');
   return d;
 }
